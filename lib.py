@@ -1,3 +1,5 @@
+
+
 import cv2
 import numpy as np
 
@@ -7,42 +9,7 @@ def show_img(im):
     cv2.waitKey()
     cv2.destroyAllWindows()
 
-def zone_clean(im,w0,h0,lvl):
-    h = im.shape[0]
-    w = im.shape[1]
-
-    a = h/h0
-    b = w/w0
-    
-    img = 0
-    
-
-    for x in range(0,h0):
-
-        row = 0
-
-        for y in range(0,w0):
-            imz = im[a*x:a*(x+1), b*y:b*(y+1)]
-            blur = int(cv2.Laplacian(imz, cv2.CV_64F).var())
-            v = round(math.log(blur,2))+lvl
-            print(v)
-
-            imz = cv2.cvtColor(imz, cv2.COLOR_BGR2GRAY)
-            imz = cv2.adaptiveThreshold(imz,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,11,v)
-            #block.append(np.array(imz))
-            if y==0:
-                row = np.array(imz)
-            else:
-                row = np.concatenate((row,imz),axis=1)
-
-        if x==0:
-            img = row
-        else:
-            img = np.concatenate((img,row),axis=0)
-
-    return img
-
-def zone_clean1(im,w0,h0,q):
+def zone_clean(im,w0,h0,q):
     h = im.shape[0]
     w = im.shape[1]
 
@@ -86,8 +53,6 @@ def img_as_boxes(img, min_area, max_area):
     return tmp
 
 def box_as_img(img, box):
-    #print(box)
-    #print(box["y"],":",box["y"]+box["h"],":",box["x"],":",box["x"]+box["w"])
     return img[box["y"]:box["y"]+box["h"],box["x"]:box["x"]+box["w"]]
 
 def resize_h(im, a):
@@ -96,6 +61,14 @@ def resize_h(im, a):
 
     rate = float(a)/h
     return cv2.resize(im, (0,0), fx=rate, fy=rate)
+
+def resize_hw(im, a, b):
+    h = im.shape[0]
+    w = im.shape[1]
+
+    rateh = float(a)/h
+    ratew = float(b)/w
+    return cv2.resize(im, (0,0), fx=ratew, fy=rateh)
 
 def correct_box(im, box,ori,ver):
     h = box["h"]
