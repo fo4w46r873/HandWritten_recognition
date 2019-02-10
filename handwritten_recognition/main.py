@@ -1,90 +1,66 @@
 import cv2
 import numpy as np
 import time
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 import pickle
 import math
-
+import sys
 
 from lib import *
 
 
 
+def get_matrix_shape(boxes):
+    h = 1
+    w = 1
 
-def mask_noise(im, ori, ver, th):
+    boxes = sorted(boxes, key=lambda k: k['y'])
+    for c in range(0, len(boxes)-1):
+        if abs(boxes[c]["y"]-boxes[c+1]["y"])>40:
+            print("H")
+            h+=1
 
-    h = im.shape[0]
-    w = im.shape[1]
+    boxes = sorted(boxes, key=lambda k: k['x'])
+    for c in range(0, len(boxes)-1):
+        if abs(boxes[c]["x"]-boxes[c+1]["x"])>40:
+            print("W")
+            w+=1
 
-    dx = w/ori
-    dy = h/ver
+    print(w,h)
+
+
+
+    return {'h': h, 'w': w}
+
+        
     
 
-    mask = np.zeros((ver+1,ori+1))
 
-    for y in range(0,h):
-        for x in range(0,w):
-            if im[y,x]>0:
-                a = int(math.ceil(float(x)/float(dx)))-1
-                b = int(math.ceil(float(y)/float(dy)))-1
 
-                mask[b,a] += 1
 
-    for y in range(0,ver):
-        for x in range(0,ori):
-            if mask[y,x]>th:
-                mask[y,x] = 1
-            else:
-                mask[y,x] = 0
-    
-    return mask
-
-def apply_mask(im,mask):
-
+def box_mask(im, boxes):
     h = im.shape[0]
     w = im.shape[1]
 
-    try:
-        for y in range(0,h):
-            for x in range(0,w):
-                im[y,x] *= mask[y,x]
-    except:
-        print("problema dimensioni")
+    mask = np.zeros([h,w])
+
+    for box in boxes:
+        
+        for a in range(box["x"],box["x"]+box["w"]):
+            for b in range(box["y"],box["y"]+box["h"]):
+                mask[b,a] = 255
+
+
+    for a in range(0,w):
+        for b in range(0,h):
+            if mask[b,a]==0:
+                im[b,a] = 0
+
     return im
 
-def print_mask(im,mask):
 
-    h = im.shape[0]
-    w = im.shape[1]
 
-    try:
-        for y in range(0,h):
-            for x in range(0,w):
-                if im[y,x]==0:
-                    im[y,x] += 100*mask[y,x]
-    except:
-        print("problema dimensioni")
-    return im
-
-def matrix_expand(matrix, sh, sw):
-
-    mh = matrix.shape[0]
-    mw = matrix.shape[1]
-
-    rh = sh/mh
-    rw = sw/mw
-
-    print(rh,rw)
-
-    res = []
-
-    for ele in matrix:
-        t = np.repeat(ele,rw)
-        for c in range(0,rh):
-            res.append(t)
-
-    return np.array(res)
     
 def create_network(db):
 
@@ -112,17 +88,17 @@ def create_network(db):
 
 
 
-
+'''
 fr = open("dba.pkl", 'rb')
-db = pickle.load(fr)
+db = pickle.load(fr, encoding='latin1')
 fr.close()
 
 fr = open("dbb.pkl", 'rb')
-db += pickle.load(fr)
+db += pickle.load(fr, encoding='latin1')
 fr.close()
 
 fr = open("dbc.pkl", 'rb')
-db += pickle.load(fr)
+db += pickle.load(fr, encoding='latin1')
 fr.close()
 
 
@@ -133,10 +109,28 @@ for ele in db:
     ele["img"] = make_16x16(ele["img"]).ravel()
 
 
+
 net = create_network(db)
+'''
+
+#load from file predefined network
+fr = open("network.pkl","rb")
+net = pickle.load(fr)
+fr.close()
 
 
-im = cv2.imread("/home/java/Scrivania/c.jpg")
+
+'''
+#saving network
+fw = open("network.pkl","wb")
+fw.write(pickle.dumps(net))
+fw.close()
+'''
+
+
+inp = input("input image\n")
+
+im = cv2.imread(inp)
 im = cv2.GaussianBlur(im,(5,5),0)
 im = resize_h(im,1024)
 im = cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
@@ -146,37 +140,17 @@ im = zone_clean(im,3,3,4)
 
 
 boxes = img_as_boxes(im,30,100000)
-
-for box in boxes:
-    correct_box(im,box,3,3)
-
-boxes = img_as_boxes(im,30,100000)
-
-'''
-mask = mask_noise(im, 128, 128,30)
-print("maschera")
-print(mask)
-
-mask = matrix_expand(mask,1024,975)
-print(mask.shape)
+im = box_mask(im, boxes)
 
 
-print(mask)
-
-mask = np.ones((1024,1024))
-im = apply_mask(im,mask)
-im = print_mask(im,mask)
-'''
 
 
-#im = cv2.cvtColor(im,cv2.COLOR_GRAY2RGB)
+m = get_matrix_shape(boxes)
+print("trovata matrice %dx%d" % (m["h"],m["w"]))
 
-
-cv2.imwrite("/home/java/Scrivania/res.jpg",im)
-
-
-A = as_generic_matrix(im,boxes,net,3,3)
+A = as_generic_matrix(im,boxes,net,m["w"],m["h"])
 
 
 print(A)
-print("DET = "+str(int(np.linalg.det(A))))
+if m["h"] == m["w"]:
+    print("DET = "+str(int(np.linalg.det(A))))

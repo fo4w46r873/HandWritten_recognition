@@ -24,7 +24,7 @@ def zone_clean(im,w0,h0,q):
         row = 0
 
         for y in range(0,w0):
-            imz = im[a*x:a*(x+1), b*y:b*(y+1)]
+            imz = im[int(a*x):int(a*(x+1)), int(b*y):int(b*(y+1))]
             imz = cv2.adaptiveThreshold(imz,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,33,16)
             #block.append(np.array(imz))
             if y==0:
@@ -40,7 +40,7 @@ def zone_clean(im,w0,h0,q):
     return img
 
 def img_as_boxes(img, min_area, max_area):
-    _, ctrs, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    ctrs, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     tmp = []
     for ctr in ctrs:
@@ -127,7 +127,7 @@ def make_16x16(img):
         h = img.shape[0]
         w = img.shape[1]
 
-        x = (16-w)/2
+        x = int((16-w)/2)
 
         s = np.zeros([16, x], dtype=np.uint8)
         img = np.concatenate((s,img), axis=1)
@@ -140,7 +140,7 @@ def make_16x16(img):
         h = img.shape[0]
         w = img.shape[1]
 
-        x = (16-h)/2
+        x = int((16-h)/2)
 
         s = np.zeros([x, 16], dtype=np.uint8)
         img = np.concatenate((s,img), axis=0)
@@ -235,7 +235,7 @@ def as_generic_matrix(im,boxes,net,w,h):
             for ele in arr:
                 print(">>",ele)
                 img = make_16x16(box_as_img(im,ele))
-                v = net.predict(img.ravel())
+                v = net.predict([img.ravel()])
                 num += int(v*pow(10,c))
                 c-=1
             A[a,b]=num
